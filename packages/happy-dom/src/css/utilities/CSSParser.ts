@@ -11,6 +11,8 @@ import CSSFontFaceRule from '../rules/CSSFontFaceRule.js';
 import SelectorParser from '../../query-selector/SelectorParser.js';
 import CSSRuleTypeEnum from '../CSSRuleTypeEnum.js';
 import CSSScopeRule from '../rules/CSSScopeRule.js';
+import CSSLayerBlockRule from '../rules/CSSLayerBlockRule.js';
+import CSSLayerStatementRule from '../rules/CSSLayerStatementRule.js';
 
 const COMMENT_REGEXP = /\/\*[\s\S]*?\*\//gm;
 
@@ -37,13 +39,30 @@ export default class CSSParser {
 	public parseFromString(cssText: string): CSSRule[] {
 		const parentStyleSheet = this.#parentStyleSheet;
 		const window = parentStyleSheet[PropertySymbol.window];
-		const css = cssText.replace(COMMENT_REGEXP, '');
-		const cssRules = [];
+		let css = cssText.replace(COMMENT_REGEXP, '');
+		const cssRules: CSSRule[] = [];
 		const regExp = /{|}/gm;
 		const stack: CSSRule[] = [];
 		let parentRule: CSSRule | null = null;
 		let lastIndex = 0;
 		let match: RegExpMatchArray | null;
+
+		// Handle @layer statements (without blocks) - e.g., @layer theme, utilities;
+		const layerStatementRegExp = /@layer\s+([^{;]+);/g;
+		let layerMatch: RegExpMatchArray | null;
+		while ((layerMatch = layerStatementRegExp.exec(css))) {
+			const layerNames = layerMatch[1].split(',').map((name) => name.trim());
+			const layerStatementRule = new CSSLayerStatementRule(
+				PropertySymbol.illegalConstructor,
+				window,
+				this
+			);
+			layerStatementRule[PropertySymbol.nameList] = layerNames;
+			layerStatementRule[PropertySymbol.parentStyleSheet] = parentStyleSheet;
+			cssRules.push(layerStatementRule);
+		}
+		// Remove @layer statements from css to avoid re-parsing
+		css = css.replace(layerStatementRegExp, '');
 
 		while ((match = regExp.exec(css))) {
 			if (match[0] === '{') {
@@ -214,6 +233,29 @@ export default class CSSParser {
 							}
 							parentRule = scopeRule;
 							break;
+						case '@layer':
+							const layerRule = new CSSLayerBlockRule(
+								PropertySymbol.illegalConstructor,
+								window,
+								this
+							);
+							layerRule[PropertySymbol.name] = ruleParameters;
+							layerRule[PropertySymbol.parentStyleSheet] = parentStyleSheet;
+
+							if (parentRule) {
+								if (
+									parentRule.type === CSSRuleTypeEnum.mediaRule ||
+									parentRule.type === CSSRuleTypeEnum.containerRule ||
+									parentRule.type === CSSRuleTypeEnum.supportsRule ||
+									parentRule instanceof CSSLayerBlockRule
+								) {
+									(<CSSMediaRule>parentRule).cssRules.push(layerRule);
+								}
+							} else {
+								cssRules.push(layerRule);
+							}
+							parentRule = layerRule;
+							break;
 						default:
 							// Unknown rule.
 							// We will create a new rule to let it grab its content, but we will not add it to the cssRules array.
@@ -240,7 +282,8 @@ export default class CSSParser {
 					parentRule &&
 					(parentRule.type === CSSRuleTypeEnum.mediaRule ||
 						parentRule.type === CSSRuleTypeEnum.containerRule ||
-						parentRule.type === CSSRuleTypeEnum.supportsRule)
+						parentRule.type === CSSRuleTypeEnum.supportsRule ||
+						parentRule.type === CSSRuleTypeEnum.layerBlockRule)
 				) {
 					if (this.validateSelectorText(selectorText)) {
 						const newRule = new CSSStyleRule(PropertySymbol.illegalConstructor, window, this);
