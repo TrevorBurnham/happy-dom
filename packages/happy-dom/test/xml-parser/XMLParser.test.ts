@@ -1138,5 +1138,24 @@ part2" data-testid="button"
 				.toBe(`<root><parsererror xmlns="http://www.w3.org/1999/xhtml" style="display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"><h3>This page contains the following errors:</h3><div style="font-family:monospace;font-size:12px">error on line 3 at column 20: Comment not terminated
 </div><h3>Below is a rendering of the page up to the first error.</h3></parsererror></root>`);
 		});
+
+		it('Parses CDATA sections.', () => {
+			const result = new XMLParser(window).parse(
+				`<root><item>Text</item><![CDATA[<special> chars: < > & " ']]><![CDATA[]]></root>`
+			);
+
+			const root = result.childNodes[0];
+			expect(root.childNodes.length).toBe(3);
+			expect(root.childNodes[0].nodeType).toBe(NodeTypeEnum.elementNode);
+			expect(root.childNodes[1].nodeType).toBe(NodeTypeEnum.cdataSectionNode);
+			expect(root.childNodes[1].nodeName).toBe('#cdata-section');
+			expect(root.childNodes[1].textContent).toBe(`<special> chars: < > & " '`);
+			expect(root.childNodes[2].nodeType).toBe(NodeTypeEnum.cdataSectionNode);
+			expect(root.childNodes[2].textContent).toBe('');
+
+			expect(new XMLSerializer().serializeToString(result)).toBe(
+				`<root><item>Text</item><![CDATA[<special> chars: < > & " ']]><![CDATA[]]></root>`
+			);
+		});
 	});
 });

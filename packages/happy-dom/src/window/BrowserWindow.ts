@@ -176,6 +176,7 @@ import ProcessingInstruction from '../nodes/processing-instruction/ProcessingIns
 import ShadowRoot from '../nodes/shadow-root/ShadowRoot.js';
 import SVGElement from '../nodes/svg-element/SVGElement.js';
 import Text from '../nodes/text/Text.js';
+import CDATASection from '../nodes/cdata-section/CDATASection.js';
 import XMLDocument from '../nodes/xml-document/XMLDocument.js';
 import PermissionStatus from '../permissions/PermissionStatus.js';
 import Permissions from '../permissions/Permissions.js';
@@ -400,6 +401,7 @@ export default class BrowserWindow extends EventTarget implements INodeJSGlobal 
 	public declare readonly XMLDocument: typeof XMLDocument;
 	public declare readonly DocumentFragment: typeof DocumentFragment;
 	public declare readonly Text: typeof Text;
+	public declare readonly CDATASection: typeof CDATASection;
 	public declare readonly Comment: typeof Comment;
 	public declare readonly Image: typeof Image;
 	public declare readonly Audio: typeof Audio;

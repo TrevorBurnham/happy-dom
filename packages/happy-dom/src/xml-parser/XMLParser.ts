@@ -71,6 +71,7 @@ enum MarkupReadStateEnum {
 	comment = 'comment',
 	documentType = 'documentType',
 	processingInstruction = 'processingInstruction',
+	cdata = 'cdata',
 	error = 'error'
 }
 
@@ -167,9 +168,18 @@ export default class XMLParser {
 						this.startTagIndex = this.markupRegExp.lastIndex;
 						this.readState = MarkupReadStateEnum.comment;
 					} else if (match[5] !== undefined) {
-						// Document type
-						this.startTagIndex = this.markupRegExp.lastIndex;
-						this.readState = MarkupReadStateEnum.documentType;
+						// Document type or CDATA
+						const remainingXML = xml.substring(this.markupRegExp.lastIndex);
+						if (remainingXML.startsWith('[CDATA[')) {
+							// CDATA section
+							this.markupRegExp.lastIndex += 7; // Skip "[CDATA["
+							this.startTagIndex = this.markupRegExp.lastIndex;
+							this.readState = MarkupReadStateEnum.cdata;
+						} else {
+							// Document type
+							this.startTagIndex = this.markupRegExp.lastIndex;
+							this.readState = MarkupReadStateEnum.documentType;
+						}
 					} else if (match[6]) {
 						// Processing instruction.
 						this.startTagIndex = this.markupRegExp.lastIndex;
@@ -222,6 +232,17 @@ export default class XMLParser {
 
 					if (match[7] || match[8]) {
 						this.parseProcessingInstruction(xml.substring(this.startTagIndex, match.index));
+					}
+					break;
+				case MarkupReadStateEnum.cdata:
+					// CDATA section - look for ]]> ending
+					// The regex doesn't directly match ]]>, so we need to scan for it
+					{
+						const cdataEndIndex = xml.indexOf(']]>', this.startTagIndex);
+						if (cdataEndIndex !== -1) {
+							this.parseCDATA(xml.substring(this.startTagIndex, cdataEndIndex));
+							this.markupRegExp.lastIndex = cdataEndIndex + 3;
+						}
 					}
 					break;
 				case MarkupReadStateEnum.error:
@@ -366,6 +387,19 @@ export default class XMLParser {
 				this.rootNode!.createComment(XMLEncodeUtility.decodeXMLEntities(comment)),
 				true
 			);
+		}
+		this.readState = MarkupReadStateEnum.any;
+	}
+
+	/**
+	 * Parses CDATA section.
+	 *
+	 * @param data CDATA content.
+	 */
+	private parseCDATA(data: string): void {
+		// CDATA sections are not allowed in the root when parsing XML.
+		if (this.currentNode !== this.rootNode) {
+			this.currentNode![PropertySymbol.appendChild](this.rootNode!.createCDATASection(data), true);
 		}
 		this.readState = MarkupReadStateEnum.any;
 	}

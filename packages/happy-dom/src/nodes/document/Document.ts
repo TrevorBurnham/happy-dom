@@ -17,6 +17,7 @@ import HTMLScriptElement from '../html-script-element/HTMLScriptElement.js';
 import HTMLElement from '../html-element/HTMLElement.js';
 import Comment from '../comment/Comment.js';
 import Text from '../text/Text.js';
+import CDATASection from '../cdata-section/CDATASection.js';
 import NodeList from '../node/NodeList.js';
 import HTMLCollection from '../element/HTMLCollection.js';
 import HTMLLinkElement from '../html-link-element/HTMLLinkElement.js';
@@ -1971,6 +1972,22 @@ export default class Document extends Node {
 		}
 		// We should use the NodeFactory and not the class constructor, so that owner document will be this document
 		return NodeFactory.createNode(this, this[PropertySymbol.window].Text, String(data));
+	}
+
+	/**
+	 * Creates a CDATA section node.
+	 *
+	 * @param [data] Text data.
+	 * @returns CDATA section node.
+	 */
+	public createCDATASection(data: string): CDATASection {
+		if (arguments.length < 1) {
+			throw new this[PropertySymbol.window].TypeError(
+				`Failed to execute 'createCDATASection' on 'Document': 1 argument required, but only ${arguments.length} present.`
+			);
+		}
+		// We should use the NodeFactory and not the class constructor, so that owner document will be this document
+		return NodeFactory.createNode(this, this[PropertySymbol.window].CDATASection, String(data));
 	}
 
 	/**
