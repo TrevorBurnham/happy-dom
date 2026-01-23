@@ -1,0 +1,4 @@
+# Benchmark results (generated files)
+results/*.txt
+results/*.json
+!results/.gitkeep
