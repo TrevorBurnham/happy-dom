@@ -1,6 +1,7 @@
 import Window from '../../src/window/Window.js';
 import MediaQueryList from '../../src/match-media/MediaQueryList.js';
 import type MediaQueryListEvent from '../../src/event/events/MediaQueryListEvent.js';
+import * as PropertySymbol from '../../src/PropertySymbol.js';
 import { beforeEach, describe, it, expect } from 'vitest';
 
 describe('MediaQueryList', () => {
@@ -569,6 +570,33 @@ describe('MediaQueryList', () => {
 			window.happyDOM?.setInnerWidth(1025);
 
 			expect(triggeredEvent).toBe(null);
+		});
+	});
+
+	describe('addEventListener()', () => {
+		it('Does not throw when internal listener maps are uninitialized (issue #1865).', () => {
+			const mediaQueryList = new MediaQueryList({
+				window: window,
+				media: '(min-width: 1025px)'
+			});
+
+			// Simulate uninitialized internal state that can occur when third-party
+			// libraries interact with the EventTarget before field initializers run.
+			(<any>mediaQueryList)[PropertySymbol.listeners] = undefined;
+			(<any>mediaQueryList)[PropertySymbol.listenerOptions] = undefined;
+
+			let called = false;
+			expect(() => {
+				mediaQueryList.addEventListener('change', () => {
+					called = true;
+				});
+			}).not.toThrow();
+
+			expect(() => {
+				mediaQueryList.dispatchEvent(new window.Event('change'));
+			}).not.toThrow();
+
+			expect(called).toBe(true);
 		});
 	});
 });
