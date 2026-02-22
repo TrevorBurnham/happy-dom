@@ -1,6 +1,7 @@
 node_modules
 tmp
 test
+src
 .turbo
 npm-shrinkwrap.json
 tsconfig.json
