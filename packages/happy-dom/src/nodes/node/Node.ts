@@ -594,6 +594,18 @@ export default class Node extends EventTarget {
 
 		const previousSibling = node.previousSibling;
 		const nextSibling = node.nextSibling;
+		const nodeIterators = node[PropertySymbol.ownerDocument]?.[PropertySymbol.nodeIterators];
+
+		if (nodeIterators?.size) {
+			for (const nodeIteratorRef of nodeIterators) {
+				const nodeIterator = nodeIteratorRef.deref();
+				if (nodeIterator) {
+					nodeIterator[PropertySymbol.preRemove](node);
+				} else {
+					nodeIterators.delete(nodeIteratorRef);
+				}
+			}
+		}
 
 		node[PropertySymbol.parentNode] = null;
 
